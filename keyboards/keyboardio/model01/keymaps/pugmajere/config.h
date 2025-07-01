@@ -3,6 +3,8 @@
 
 #pragma once
 
+#define TAPPING_TERM 150
+
 #define USB_MAX_POWER_CONSUMPTION 500
 
 #define RGBLIGHT_LIMIT_VAL 175
