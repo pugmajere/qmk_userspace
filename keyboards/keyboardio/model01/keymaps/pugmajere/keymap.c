@@ -73,27 +73,7 @@ LAYOUT(
 */
 // clang-format on
 
-static os_variant_t os = OS_UNSURE;
-
-bool process_detected_host_os_user(os_variant_t detected_os) {
-    switch (detected_os) {
-        case OS_MACOS:
-        case OS_IOS:
-            rgb_matrix_set_color_all(RGB_WHITE);
-            break;
-        case OS_WINDOWS:
-            rgb_matrix_set_color_all(RGB_BLUE);
-            break;
-        case OS_LINUX:
-            rgb_matrix_set_color_all(RGB_ORANGE);
-            break;
-        case OS_UNSURE:
-            rgb_matrix_set_color_all(RGB_RED);
-            break;
-    }
-    os = detected_os;
-    return true;
-}
+static bool macos_mode = false;
 
 // Work around limitations in mod-tapping
 static uint16_t space_cadet_control_timer    = 0;
@@ -151,20 +131,21 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
             break;
         case DUMP_OS:
             if (record->event.pressed) {
-                tap_code(KC_A + os);
+                macos_mode = !macos_mode;
+                tap_code(KC_A + macos_mode);
             }
             break;
         case MACRO_SC_LALTGUI:
             if (record->event.pressed) {
                 space_cadet_control_timer    = timer_read();
                 space_cadet_key_pressed_flag = false;
-                if (os == OS_MACOS) {
+                if (macos_mode) {
                     register_mods(MOD_BIT(KC_LGUI));
                 } else {
                     register_mods(MOD_BIT(KC_LALT));
                 }
             } else {
-                if (os == OS_MACOS) {
+                if (macos_mode) {
                     unregister_mods(MOD_BIT(KC_LGUI));
                 } else {
                     unregister_mods(MOD_BIT(KC_LALT));
