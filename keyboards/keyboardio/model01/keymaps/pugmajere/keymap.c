@@ -28,6 +28,8 @@ enum custom_keycode {
     MACRO_KVM_3,
     MACRO_KVM_4,
     MACRO_KVM_TG,
+    MACRO_SC_LALTGUI,
+    DUMP_OS,
 };
 
 // clang-format off
@@ -39,14 +41,14 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
   KC_PGDN, KC_Z   , KC_X   , KC_C   , KC_V   , KC_B   , KC_ESC ,    KC_RALT, KC_N   , KC_M   , KC_COMM, KC_DOT , KC_SLSH, KC_MINS,
                                           SC_LCPO,                                       SC_RCPC,
                                             KC_BSPC,                                     KC_SPC,
-                                              SC_LAPO,                                 SC_RAPC,
+                                     MACRO_SC_LALTGUI,                                 SC_RAPC,
                                                 SC_LSPO,                              SC_RSPC,
                                                    MO(FUN),                         MO(FUN)
   ),
 [FUN] = LAYOUT(
   _______, KC_F1  , KC_F2  , KC_F3  , KC_F4  , KC_F5  ,                      KC_F6  , KC_F7  , KC_F8  , KC_F9  , KC_F10 , KC_F11 ,
   KC_TAB , _______, MS_UP, MS_WHLU, MS_BTN3, MACRO_KVM_1, RM_TOGG,     KC_MPRV, KC_MNXT, KC_LCBR, KC_RCBR, KC_LBRC, KC_RBRC, KC_F12 ,
-  KC_HOME, MS_LEFT, MS_DOWN, MS_RGHT, MS_BTN1, MACRO_KVM_2, RM_SPDU,    KC_MPLY, KC_LEFT, KC_DOWN, KC_UP  , KC_RGHT, _______, _______,
+  KC_HOME, MS_LEFT, MS_DOWN, MS_RGHT, MS_BTN1, MACRO_KVM_2, RM_SPDU,    DUMP_OS, KC_LEFT, KC_DOWN, KC_UP  , KC_RGHT, _______, _______,
   KC_END , KC_PSCR, KC_INS , MS_WHLD, MS_BTN2, MACRO_KVM_4, RM_SPDD,    MACRO_KVM_3, KC_MUTE, KC_VOLD, KC_VOLU, KC_PAUS, KC_BSLS, KC_PIPE,
                                          _______,                                 _______,
                                             KC_DEL ,                           KC_ENT ,
@@ -71,7 +73,36 @@ LAYOUT(
 */
 // clang-format on
 
+static os_variant_t os = OS_UNSURE;
+
+bool process_detected_host_os_user(os_variant_t detected_os) {
+    switch (detected_os) {
+        case OS_MACOS:
+        case OS_IOS:
+            rgb_matrix_set_color_all(RGB_WHITE);
+            break;
+        case OS_WINDOWS:
+            rgb_matrix_set_color_all(RGB_BLUE);
+            break;
+        case OS_LINUX:
+            rgb_matrix_set_color_all(RGB_ORANGE);
+            break;
+        case OS_UNSURE:
+            rgb_matrix_set_color_all(RGB_RED);
+            break;
+    }
+    os = detected_os;
+    return true;
+}
+
+// Work around limitations in mod-tapping
+static uint16_t space_cadet_control_timer    = 0;
+static bool     space_cadet_key_pressed_flag = false;
+
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
+    if (record->event.pressed) {
+        space_cadet_key_pressed_flag = true;
+    }
     switch (keycode) {
         case MACRO_CTRL_PAGE_UP:
             if (record->event.pressed) {
@@ -117,6 +148,32 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                 unregister_code(KC_LSFT);
                 tap_code(KC_LCTL);
             }
+            break;
+        case DUMP_OS:
+            if (record->event.pressed) {
+                tap_code(KC_A + os);
+            }
+            break;
+        case MACRO_SC_LALTGUI:
+            if (record->event.pressed) {
+                space_cadet_control_timer    = timer_read();
+                space_cadet_key_pressed_flag = false;
+                if (os == OS_MACOS) {
+                    register_mods(MOD_BIT(KC_LGUI));
+                } else {
+                    register_mods(MOD_BIT(KC_LALT));
+                }
+            } else {
+                if (os == OS_MACOS) {
+                    unregister_mods(MOD_BIT(KC_LGUI));
+                } else {
+                    unregister_mods(MOD_BIT(KC_LALT));
+                }
+                if (timer_elapsed(space_cadet_control_timer) < TAPPING_TERM && !space_cadet_key_pressed_flag) {
+                    tap_code16(LSFT(KC_LBRC));
+                }
+            }
+            return false;
             break;
     }
     return true;

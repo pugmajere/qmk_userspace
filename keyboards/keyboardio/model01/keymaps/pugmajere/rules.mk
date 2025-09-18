@@ -1,1 +1,3 @@
 DEBOUNCE_TYPE = sym_defer_pk
+OS_DETECTION_ENABLE = yes
+CONSOLE_ENABLE = yes
